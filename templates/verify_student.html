@@ -5,38 +5,38 @@
   <h4 class="mb-4">Student Identity Verification</h4>
 
   <form method="POST" enctype="multipart/form-data" action="{{ url_for('verify_student') }}">
-    <div class="mb-3 text-center">
-      <label for="webcam" class="form-label fw-bold">Live Webcam Preview</label><br>
-      <video id="video" width="480" height="360" autoplay class="border rounded shadow"></video>
+    <div class="mb-3">
+      <label for="webcam" class="form-label">Webcam Preview</label><br>
+      <video id="video" width="480" height="360" autoplay></video>
       <canvas id="canvas" width="480" height="360" style="display: none;"></canvas>
     </div>
 
     <input type="hidden" name="image_data" id="image_data">
 
-    <div class="d-flex justify-content-center gap-3 mb-4">
-      <button type="button" class="btn btn-primary" onclick="capture()">📷 Capture Face</button>
-      <button type="submit" class="btn btn-success">✅ Verify Student</button>
-    </div>
+    <button type="button" class="btn btn-primary" onclick="capture()">Capture Face</button>
+    <button type="submit" class="btn btn-success">Verify Student</button>
   </form>
+
+  <div class="alert alert-warning mt-4" id="speechAlert" style="display: none;">
+    Unauthorized speech detected!
+  </div>
 </div>
 
 <script>
   const video = document.getElementById('video');
   const canvas = document.getElementById('canvas');
   const image_data = document.getElementById('image_data');
+  const speechAlert = document.getElementById('speechAlert');
 
-  // Access webcam
-  navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+  // Webcam access
+  navigator.mediaDevices.getUserMedia({ video: true })
     .then((stream) => {
       video.srcObject = stream;
-      detectSpeech(stream); // Start audio monitoring
     })
     .catch((err) => {
-      alert("Failed to access webcam or microphone. Please ensure permissions are granted.");
-      console.error("Media error: ", err);
+      console.error("Error accessing webcam: ", err);
     });
 
-  // Capture image and store in hidden input
   function capture() {
     const context = canvas.getContext('2d');
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -45,27 +45,29 @@
     alert('Face captured successfully!');
   }
 
-  // Real-time speech detection
-  function detectSpeech(stream) {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const source = audioContext.createMediaStreamSource(stream);
-    const analyser = audioContext.createAnalyser();
-    source.connect(analyser);
-    analyser.fftSize = 512;
-    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+  // Speech detection using Web Speech API
+  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = false;
 
-    function checkVolume() {
-      analyser.getByteFrequencyData(dataArray);
-      let volume = dataArray.reduce((a, b) => a + b) / dataArray.length;
-      if (volume > 30) { // Arbitrary threshold
-        console.warn("🚨 Possible speaking detected!");
-        document.body.insertAdjacentHTML('beforeend', '<div class="alert alert-danger position-fixed bottom-0 end-0 m-3" role="alert">🔊 Speaking detected!</div>');
-        setTimeout(() => document.querySelector('.alert')?.remove(), 3000);
+    recognition.onresult = (event) => {
+      const transcript = event.results[event.resultIndex][0].transcript;
+      console.log("Speech detected: ", transcript);
+      if (transcript.trim().length > 3) {
+        speechAlert.style.display = 'block';
+        // Optionally send an alert to the server (AJAX)
       }
-      requestAnimationFrame(checkVolume);
-    }
+    };
 
-    checkVolume();
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error:", event.error);
+    };
+
+    recognition.start();
+  } else {
+    console.warn("Speech Recognition not supported in this browser.");
   }
 </script>
 
