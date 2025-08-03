@@ -1,0 +1,65 @@
+/* General Body Styling */
+body {
+  background: linear-gradient(to right, #e0f7fa, #ffffff);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  padding-top: 70px;
+}
+
+/* Navbar Styling */
+.navbar {
+  background-color: #0077b6;
+}
+
+.navbar-brand {
+  color: #ffffff !important;
+  font-weight: bold;
+  font-size: 1.4rem;
+}
+
+.nav-link {
+  color: #ffffff !important;
+  margin-left: 10px;
+}
+
+.nav-link:hover {
+  text-decoration: underline;
+}
+
+/* Card Styling */
+.card {
+  border-radius: 15px;
+  border: none;
+}
+
+/* Buttons */
+.btn {
+  border-radius: 25px;
+}
+
+.btn-primary {
+  background-color: #0077b6;
+  border-color: #0077b6;
+}
+
+.btn-primary:hover {
+  background-color: #005f8f;
+}
+
+.btn-success {
+  background-color: #2e7d32;
+  border-color: #2e7d32;
+}
+
+.btn-danger {
+  background-color: #d32f2f;
+  border-color: #d32f2f;
+}
+
+/* Footer Styling */
+footer {
+  background-color: #0077b6;
+  color: white;
+  padding: 10px 0;
+  text-align: center;
+  margin-top: 40px;
+}
