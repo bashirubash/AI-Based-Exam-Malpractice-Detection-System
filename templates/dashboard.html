@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+  <div class="row mb-4">
+    <div class="col">
+      <h3 class="text-primary">Dashboard Overview</h3>
+      <hr>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="row mb-4 text-center">
+    <div class="col-md-4">
+      <div class="card shadow-sm border-primary">
+        <div class="card-body">
+          <h5 class="card-title">Registered Students</h5>
+          <p class="card-text display-6 text-primary">--</p> <!-- Placeholder -->
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card shadow-sm border-success">
+        <div class="card-body">
+          <h5 class="card-title">Active Invigilators</h5>
+          <p class="card-text display-6 text-success">--</p> <!-- Placeholder -->
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card shadow-sm border-danger">
+        <div class="card-body">
+          <h5 class="card-title">Alerts Detected</h5>
+          <p class="card-text display-6 text-danger">--</p> <!-- Placeholder -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alerts Section -->
+  <div class="row">
+    <div class="col">
+      <h5 class="text-danger">Recent Malpractice Alerts</h5>
+      <table class="table table-bordered table-hover">
+        <thead class="table-dark">
+          <tr>
+            <th>Student ID</th>
+            <th>Name</th>
+            <th>Detected Activity</th>
+            <th>Timestamp</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>CSC/20D/4001</td>
+            <td>John Doe</td>
+            <td>Unauthorized speech</td>
+            <td>2025-08-03 10:42 AM</td>
+          </tr>
+          <tr>
+            <td>CSC/20D/4012</td>
+            <td>Jane Smith</td>
+            <td>Suspicious movement</td>
+            <td>2025-08-03 10:50 AM</td>
+          </tr>
+          <!-- More alerts can be dynamically injected here -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
