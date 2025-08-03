@@ -1,40 +1,72 @@
-{% extends "base.html" %}
-
+{% extends 'base.html' %}
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-md-8">
-    <div class="card shadow p-4">
-      <h4 class="text-center mb-4">Verify Student Identity</h4>
-      {% with messages = get_flashed_messages() %}
-        {% if messages %}
-          {% for msg in messages %}
-            <div class="alert alert-info">{{ msg }}</div>
-          {% endfor %}
-        {% endif %}
-      {% endwith %}
-      <form method="POST" action="{{ url_for('verify_student') }}" enctype="multipart/form-data">
-        <div class="mb-3">
-          <label for="face_image" class="form-label">Snap Student Face Image</label>
-          <input type="file" class="form-control" id="face_image" name="face_image" accept="image/*" required>
-        </div>
-        <button type="submit" class="btn btn-warning w-100">Verify</button>
-      </form>
+
+<div class="container">
+  <h4 class="mb-4">Student Identity Verification</h4>
+
+  <form method="POST" enctype="multipart/form-data" action="{{ url_for('verify_student') }}">
+    <div class="mb-3 text-center">
+      <label for="webcam" class="form-label fw-bold">Live Webcam Preview</label><br>
+      <video id="video" width="480" height="360" autoplay class="border rounded shadow"></video>
+      <canvas id="canvas" width="480" height="360" style="display: none;"></canvas>
     </div>
 
-    {% if student %}
-    <div class="card mt-4 shadow">
-      <div class="card-body">
-        <h5 class="card-title">Student Verified</h5>
-        <p><strong>Student ID:</strong> {{ student.student_id }}</p>
-        <p><strong>Name:</strong> {{ student.name }}</p>
-        <p><strong>Level:</strong> {{ student.level }}</p>
-        <form method="POST" action="{{ url_for('start_exam') }}">
-          <input type="hidden" name="student_id" value="{{ student.student_id }}">
-          <button type="submit" class="btn btn-success w-100">Start Exam & Monitoring</button>
-        </form>
-      </div>
+    <input type="hidden" name="image_data" id="image_data">
+
+    <div class="d-flex justify-content-center gap-3 mb-4">
+      <button type="button" class="btn btn-primary" onclick="capture()">📷 Capture Face</button>
+      <button type="submit" class="btn btn-success">✅ Verify Student</button>
     </div>
-    {% endif %}
-  </div>
+  </form>
 </div>
+
+<script>
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  const image_data = document.getElementById('image_data');
+
+  // Access webcam
+  navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+    .then((stream) => {
+      video.srcObject = stream;
+      detectSpeech(stream); // Start audio monitoring
+    })
+    .catch((err) => {
+      alert("Failed to access webcam or microphone. Please ensure permissions are granted.");
+      console.error("Media error: ", err);
+    });
+
+  // Capture image and store in hidden input
+  function capture() {
+    const context = canvas.getContext('2d');
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    let dataURL = canvas.toDataURL('image/png');
+    image_data.value = dataURL;
+    alert('Face captured successfully!');
+  }
+
+  // Real-time speech detection
+  function detectSpeech(stream) {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioContext.createMediaStreamSource(stream);
+    const analyser = audioContext.createAnalyser();
+    source.connect(analyser);
+    analyser.fftSize = 512;
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+    function checkVolume() {
+      analyser.getByteFrequencyData(dataArray);
+      let volume = dataArray.reduce((a, b) => a + b) / dataArray.length;
+      if (volume > 30) { // Arbitrary threshold
+        console.warn("🚨 Possible speaking detected!");
+        document.body.insertAdjacentHTML('beforeend', '<div class="alert alert-danger position-fixed bottom-0 end-0 m-3" role="alert">🔊 Speaking detected!</div>');
+        setTimeout(() => document.querySelector('.alert')?.remove(), 3000);
+      }
+      requestAnimationFrame(checkVolume);
+    }
+
+    checkVolume();
+  }
+</script>
+
 {% endblock %}
