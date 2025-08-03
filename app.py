@@ -2,9 +2,9 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import sqlite3
 import os
 import face_recognition
-import cv2
 import numpy as np
 import base64
+import io
 from datetime import datetime
 from PIL import Image
 
@@ -32,10 +32,10 @@ def decode_image(data_url):
 
 def insert_alert(student_id, name, activity):
     conn = get_db()
-    c = conn.cursor()
+    cursor = conn.cursor()
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    c.execute("INSERT INTO alerts (student_id, name, activity, timestamp) VALUES (?, ?, ?, ?)",
-              (student_id, name, activity, timestamp))
+    cursor.execute("INSERT INTO alerts (student_id, name, activity, timestamp) VALUES (?, ?, ?, ?)",
+                   (student_id, name, activity, timestamp))
     conn.commit()
     conn.close()
 
@@ -48,7 +48,6 @@ def index():
 def login():
     username = request.form['username']
     password = request.form['password']
-
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
@@ -58,12 +57,12 @@ def login():
     if user:
         session['username'] = user['username']
         session['role'] = user['role']
-        if user['role'] == 'exam_officer':
+        if user['role'] == 'admin':
+            return redirect(url_for('dashboard'))
+        elif user['role'] == 'exam_officer':
             return redirect(url_for('register_student'))
         elif user['role'] == 'invigilator':
             return redirect(url_for('verify_student'))
-        elif user['role'] == 'admin':
-            return redirect(url_for('dashboard'))
         else:
             flash('Invalid role', 'danger')
     else:
@@ -130,6 +129,8 @@ def verify_student():
             if match:
                 flash(f"Match found: ID {student['student_id']}, Name {student['name']}, Level {student['level']}", 'success')
                 return render_template("malpractice_monitor.html", student=student)
+        
+        # If no match found
         flash("No matching student found", 'danger')
         insert_alert("Unknown", "Unknown", "Face mismatch / unauthorized student")
         return redirect(url_for('verify_student'))
@@ -163,31 +164,31 @@ def create_invigilator():
 @app.route('/dashboard')
 def dashboard():
     conn = get_db()
-    c = conn.cursor()
-    c.execute("SELECT COUNT(*) FROM students")
-    student_count = c.fetchone()[0]
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM students")
+    student_count = cursor.fetchone()[0]
 
-    c.execute("SELECT COUNT(*) FROM users WHERE role='invigilator'")
-    invigilator_count = c.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM users WHERE role='invigilator'")
+    invigilator_count = cursor.fetchone()[0]
 
-    c.execute("SELECT COUNT(*) FROM alerts")
-    alert_count = c.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM alerts")
+    alert_count = cursor.fetchone()[0]
 
-    c.execute("SELECT student_id, name, activity, timestamp FROM alerts ORDER BY timestamp DESC LIMIT 10")
-    alerts = [
-        {'student_id': row[0], 'name': row[1], 'activity': row[2], 'timestamp': row[3]}
-        for row in c.fetchall()
-    ]
+    cursor.execute("SELECT student_id, name, activity, timestamp FROM alerts ORDER BY timestamp DESC LIMIT 10")
+    alerts = [{'student_id': r[0], 'name': r[1], 'activity': r[2], 'timestamp': r[3]} for r in cursor.fetchall()]
     conn.close()
 
-    return render_template("dashboard.html", student_count=student_count,
+    return render_template("dashboard.html",
+                           student_count=student_count,
                            invigilator_count=invigilator_count,
-                           alert_count=alert_count, alerts=alerts)
+                           alert_count=alert_count,
+                           alerts=alerts)
 
+# --- DB Setup ---
 def init_db():
     conn = get_db()
-    c = conn.cursor()
-    c.execute('''
+    cursor = conn.cursor()
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE,
@@ -195,7 +196,7 @@ def init_db():
             role TEXT CHECK(role IN ('admin', 'exam_officer', 'invigilator'))
         )
     ''')
-    c.execute('''
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS students (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             student_id TEXT,
@@ -204,7 +205,7 @@ def init_db():
             face_encoding BLOB
         )
     ''')
-    c.execute('''
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS alerts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             student_id TEXT,
@@ -213,14 +214,13 @@ def init_db():
             timestamp TEXT
         )
     ''')
-    c.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES ('admin', 'admin123', 'admin')")
-    c.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES ('officer', '1234', 'exam_officer')")
-    c.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES ('invigilator', '1234', 'invigilator')")
-
+    cursor.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES ('admin', 'admin123', 'admin')")
+    cursor.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES ('officer', '1234', 'exam_officer')")
+    cursor.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES ('invigilator', '1234', 'invigilator')")
     conn.commit()
     conn.close()
 
 init_db()
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0", port=10000)
