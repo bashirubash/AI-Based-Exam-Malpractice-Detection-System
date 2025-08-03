@@ -5,7 +5,7 @@ import face_recognition
 import cv2
 import numpy as np
 import base64
-import io
+from datetime import datetime
 from PIL import Image
 
 app = Flask(__name__)
@@ -23,6 +23,21 @@ def encode_face(image_path):
     image = face_recognition.load_image_file(image_path)
     encodings = face_recognition.face_encodings(image)
     return encodings[0] if encodings else None
+
+def decode_image(data_url):
+    encoded = data_url.split(',')[1]
+    binary_data = base64.b64decode(encoded)
+    img = Image.open(io.BytesIO(binary_data))
+    return np.array(img)
+
+def insert_alert(student_id, name, activity):
+    conn = get_db()
+    c = conn.cursor()
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    c.execute("INSERT INTO alerts (student_id, name, activity, timestamp) VALUES (?, ?, ?, ?)",
+              (student_id, name, activity, timestamp))
+    conn.commit()
+    conn.close()
 
 # --- Routes ---
 @app.route('/')
@@ -47,6 +62,8 @@ def login():
             return redirect(url_for('register_student'))
         elif user['role'] == 'invigilator':
             return redirect(url_for('verify_student'))
+        elif user['role'] == 'admin':
+            return redirect(url_for('dashboard'))
         else:
             flash('Invalid role', 'danger')
     else:
@@ -95,27 +112,27 @@ def verify_student():
         return redirect(url_for('index'))
 
     if request.method == 'POST':
-        file = request.files['photo']
-        if file:
-            image = face_recognition.load_image_file(file)
-            encoding = face_recognition.face_encodings(image)
-            if not encoding:
-                flash('No face found', 'danger')
-                return redirect(url_for('verify_student'))
-            encoding = encoding[0]
-
-            conn = get_db()
-            cursor = conn.cursor()
-            cursor.execute("SELECT student_id, name, level, face_encoding FROM students")
-            students = cursor.fetchall()
-            for student in students:
-                stored_encoding = np.frombuffer(student['face_encoding'], dtype=np.float64)
-                match = face_recognition.compare_faces([stored_encoding], encoding)[0]
-                if match:
-                    flash(f"Match found: ID {student['student_id']}, Name {student['name']}, Level {student['level']}", 'success')
-                    return render_template("malpractice_monitor.html", student=student)
-            flash("No matching student found", 'danger')
+        image_data = request.form['image_data']
+        np_image = decode_image(image_data)
+        encoding = face_recognition.face_encodings(np_image)
+        if not encoding:
+            flash('No face found', 'danger')
             return redirect(url_for('verify_student'))
+        encoding = encoding[0]
+
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT student_id, name, level, face_encoding FROM students")
+        students = cursor.fetchall()
+        for student in students:
+            stored_encoding = np.frombuffer(student['face_encoding'], dtype=np.float64)
+            match = face_recognition.compare_faces([stored_encoding], encoding)[0]
+            if match:
+                flash(f"Match found: ID {student['student_id']}, Name {student['name']}, Level {student['level']}", 'success')
+                return render_template("malpractice_monitor.html", student=student)
+        flash("No matching student found", 'danger')
+        insert_alert("Unknown", "Unknown", "Face mismatch / unauthorized student")
+        return redirect(url_for('verify_student'))
 
     return render_template('verify_student.html')
 
@@ -143,6 +160,30 @@ def create_invigilator():
 
     return render_template("add_user.html")
 
+@app.route('/dashboard')
+def dashboard():
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM students")
+    student_count = c.fetchone()[0]
+
+    c.execute("SELECT COUNT(*) FROM users WHERE role='invigilator'")
+    invigilator_count = c.fetchone()[0]
+
+    c.execute("SELECT COUNT(*) FROM alerts")
+    alert_count = c.fetchone()[0]
+
+    c.execute("SELECT student_id, name, activity, timestamp FROM alerts ORDER BY timestamp DESC LIMIT 10")
+    alerts = [
+        {'student_id': row[0], 'name': row[1], 'activity': row[2], 'timestamp': row[3]}
+        for row in c.fetchall()
+    ]
+    conn.close()
+
+    return render_template("dashboard.html", student_count=student_count,
+                           invigilator_count=invigilator_count,
+                           alert_count=alert_count, alerts=alerts)
+
 def init_db():
     conn = get_db()
     c = conn.cursor()
@@ -161,6 +202,15 @@ def init_db():
             name TEXT,
             level TEXT,
             face_encoding BLOB
+        )
+    ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS alerts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id TEXT,
+            name TEXT,
+            activity TEXT,
+            timestamp TEXT
         )
     ''')
     c.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES ('admin', 'admin123', 'admin')")
