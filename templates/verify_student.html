@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card shadow p-4">
+      <h4 class="text-center mb-4">Verify Student Identity</h4>
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          {% for msg in messages %}
+            <div class="alert alert-info">{{ msg }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      <form method="POST" action="{{ url_for('verify_student') }}" enctype="multipart/form-data">
+        <div class="mb-3">
+          <label for="face_image" class="form-label">Snap Student Face Image</label>
+          <input type="file" class="form-control" id="face_image" name="face_image" accept="image/*" required>
+        </div>
+        <button type="submit" class="btn btn-warning w-100">Verify</button>
+      </form>
+    </div>
+
+    {% if student %}
+    <div class="card mt-4 shadow">
+      <div class="card-body">
+        <h5 class="card-title">Student Verified</h5>
+        <p><strong>Student ID:</strong> {{ student.student_id }}</p>
+        <p><strong>Name:</strong> {{ student.name }}</p>
+        <p><strong>Level:</strong> {{ student.level }}</p>
+        <form method="POST" action="{{ url_for('start_exam') }}">
+          <input type="hidden" name="student_id" value="{{ student.student_id }}">
+          <button type="submit" class="btn btn-success w-100">Start Exam & Monitoring</button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
