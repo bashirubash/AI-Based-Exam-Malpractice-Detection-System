@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-10">
+    <div class="card shadow p-4">
+      <h4 class="text-center mb-4">Exam Monitoring in Progress</h4>
+
+      <div class="alert alert-info text-center">
+        Monitoring <strong>{{ student_name }}</strong> ({{ student_id }}) — Level {{ level }}
+      </div>
+
+      <div id="alerts">
+        {% if alerts %}
+          {% for alert in alerts %}
+            <div class="alert alert-danger mt-2">
+              <strong>Alert:</strong> {{ alert }}
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="alert alert-success text-center">
+            No malpractice detected yet.
+          </div>
+        {% endif %}
+      </div>
+
+      <form method="POST" action="{{ url_for('end_exam') }}">
+        <button type="submit" class="btn btn-danger mt-3 w-100">End Monitoring</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
