@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card shadow p-4">
+      <h4 class="text-center mb-4">Register New Student</h4>
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          {% for msg in messages %}
+            <div class="alert alert-info">{{ msg }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      <form method="POST" action="{{ url_for('register_student') }}" enctype="multipart/form-data">
+        <div class="mb-3">
+          <label for="student_id" class="form-label">Student ID</label>
+          <input type="text" class="form-control" id="student_id" name="student_id" required>
+        </div>
+        <div class="mb-3">
+          <label for="name" class="form-label">Full Name</label>
+          <input type="text" class="form-control" id="name" name="name" required>
+        </div>
+        <div class="mb-3">
+          <label for="level" class="form-label">Level</label>
+          <input type="text" class="form-control" id="level" name="level" required>
+        </div>
+        <div class="mb-3">
+          <label for="face_image" class="form-label">Capture Student Face Image</label>
+          <input type="file" class="form-control" id="face_image" name="face_image" accept="image/*" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Register Student</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
